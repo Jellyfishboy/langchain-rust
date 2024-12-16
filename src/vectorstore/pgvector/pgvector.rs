@@ -164,95 +164,54 @@ impl VectorStore for Store {
         limit: usize,
         opt: &VecStoreOptions,
     ) -> Result<Vec<Document>, Box<dyn Error>> {
-        let collection_name = self.get_name_space(opt);
-        let filter = self.get_filters(opt)?;
-        let mut where_querys = filter
-            .iter()
-            .map(|(k, v)| {
-                format!(
-                    "(data.cmetadata ->> '{}') = '{}'",
-                    k,
-                    v.to_string().trim_matches('"')
-                )
-            })
-            .collect::<Vec<String>>()
-            .join(" AND ");
-
-        if where_querys.is_empty() {
-            where_querys = "TRUE".to_string();
-        }
-
+        let namespace = opt.name_space.as_deref().unwrap_or("default");
+        
         let sql = format!(
-            r#"WITH filtered_embedding_dims AS MATERIALIZED (
-                SELECT
-                    *
-                FROM
-                    {}
-                WHERE
-                    vector_dims(embedding) = $1
-            )
-            SELECT
-                data.document,
-                data.cmetadata,
-                data.distance
-            FROM (
-                SELECT
-                    filtered_embedding_dims.*,
-                    embedding <=> $2 AS distance
-                FROM
-                    filtered_embedding_dims
-                    JOIN {} ON filtered_embedding_dims.collection_id = {}.uuid
-                WHERE {}.name = '{}'
-            ) AS data
-            WHERE {}
-            ORDER BY
-                data.distance ASC
-            LIMIT $3"#,
-            self.embedder_table_name,
-            self.collection_table_name,
-            self.collection_table_name,
-            self.collection_table_name,
-            collection_name,
-            where_querys,
+            r#"SELECT 
+                content,
+                namespace,
+                (vectors <=> $1) as distance
+            FROM 
+                vector_docs
+            WHERE 
+                namespace = $2
+            ORDER BY 
+                distance ASC
+            LIMIT $3"#
         );
-
+    
         let query_vector = self.embedder.embed_query(query).await?;
-
-        let vector_dims = query_vector.len();
-
+    
         let rows = sqlx::query(&sql)
-            .bind(vector_dims as i64)
             .bind(&Vector::from(
                 query_vector
                     .into_iter()
                     .map(|x| x as f32)
                     .collect::<Vec<f32>>(),
             ))
+            .bind(namespace)
             .bind(limit as i32)
             .fetch_all(&self.pool)
             .await?;
-
+    
         let docs = rows
             .into_iter()
             .map(|row| {
                 let page_content: String = row.try_get(0)?;
-                let metadata_json: Value = row.try_get(1)?;
-                let score: f64 = row.try_get(2)?;
-
-                let metadata = if let Value::Object(obj) = metadata_json {
-                    obj.into_iter().collect()
-                } else {
-                    HashMap::new() // Or handle this case as needed
-                };
-
+                let namespace: String = row.try_get(1)?;
+                let distance: f64 = row.try_get(2)?;
+    
+                let mut metadata = HashMap::new();
+                metadata.insert("namespace".to_string(), Value::String(namespace));
+    
                 Ok(Document {
                     page_content,
                     metadata,
-                    score,
+                    score: distance,  // Lower distance means more similar
                 })
             })
             .collect::<Result<Vec<Document>, sqlx::Error>>()?;
-
+    
         Ok(docs)
     }
 }
