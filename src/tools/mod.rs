@@ -16,6 +16,9 @@ pub use duckduckgo::*;
 mod serpapi;
 pub use serpapi::*;
 
+mod dataforseo;
+pub use dataforseo::*;
+
 mod command_executor;
 pub use command_executor::*;
 
