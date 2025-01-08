@@ -46,30 +46,62 @@ impl DataForSeo {
             "keyword": query,
             "depth": self.depth.unwrap_or(100)
         }]);
-
+    
+        println!("🔍 Request body: {}", serde_json::to_string_pretty(&body)?);
+    
         let response = client
             .post("https://api.dataforseo.com/v3/serp/google/organic/live/regular")
             .basic_auth(&self.access_token, Some(""))
             .json(&body)
             .send()
             .await?;
-
+    
+        println!("📡 Response status: {}", response.status());
+        
         let results: Value = response.json().await?;
+        println!("📊 Raw API response: {}", serde_json::to_string_pretty(&results)?);
         
         process_dataforseo_response(&results)
     }
 }
 
 fn process_dataforseo_response(res: &Value) -> Result<String, Box<dyn Error>> {
+    println!("Processing response...");
+    
+    // Check for API status
+    if let Some(status_code) = res["status_code"].as_u64() {
+        println!("API status code: {}", status_code);
+        if status_code != 20000 {
+            return Err(format!("API error: {}", res["status_message"].as_str().unwrap_or("Unknown error")).into());
+        }
+    }
+
     if let Some(tasks) = res["tasks"].as_array() {
+        println!("Found {} tasks", tasks.len());
+        
         if let Some(first_task) = tasks.first() {
+            println!("Task status: {}", first_task["status_code"].as_u64().unwrap_or(0));
+            
             if let Some(results) = first_task["result"].as_array() {
+                println!("Found {} results", results.len());
+                
                 if let Some(first_result) = results.first() {
                     if let Some(items) = first_result["items"].as_array() {
-                        if let Some(first_item) = items.first() {
-                            if let Some(description) = first_item["description"].as_str() {
-                                return Ok(description.to_string());
+                        println!("Found {} items", items.len());
+                        
+                        // Collect all organic results
+                        let mut organic_results = Vec::new();
+                        for item in items {
+                            if let (Some(title), Some(snippet)) = (
+                                item["title"].as_str(),
+                                item["snippet"].as_str()
+                            ) {
+                                organic_results.push(format!("Title: {}\nSnippet: {}\n", title, snippet));
                             }
+                        }
+                        
+                        if !organic_results.is_empty() {
+                            return Ok(organic_results.join("\n"));
                         }
                     }
                 }
@@ -77,7 +109,7 @@ fn process_dataforseo_response(res: &Value) -> Result<String, Box<dyn Error>> {
         }
     }
     
-    Err("No results found".into())
+    Err("No results found in the response structure".into())
 }
 
 #[async_trait]
