@@ -51,7 +51,7 @@ impl DataForSeo {
     
         let response = client
             .post("https://api.dataforseo.com/v3/serp/google/organic/live/regular")
-            .basic_auth(&self.access_token, Some(""))
+            .header("Authorization", format!("Basic {}", self.access_token))
             .json(&body)
             .send()
             .await?;
@@ -151,7 +151,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn dataforseo_tool() {
-        let dataforseo = DataForSeo::default();
+        let dataforseo = DataForSeo::new("your_base64_encoded_api_key".to_string());
         let s = dataforseo
             .simple_search("Who is the President of Peru")
             .await
