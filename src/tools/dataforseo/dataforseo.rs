@@ -96,6 +96,10 @@ fn process_dataforseo_response(res: &Value) -> Result<String, Box<dyn Error>> {
                             if let Some(title) = item["title"].as_str() {
                                 let snippet = item["snippet"].as_str().unwrap_or("");
                                 organic_results.push(format!("Title: {}\nSnippet: {}\n", title, snippet));
+
+                                if organic_results.len() >= 30 {
+                                    break;
+                                }
                             }
                         }
                         
