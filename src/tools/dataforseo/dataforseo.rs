@@ -128,8 +128,22 @@ impl Tool for DataForSeo {
     }
 
     async fn run(&self, input: Value) -> Result<String, Box<dyn Error>> {
-        let input = input.as_str().ok_or("Input should be a string")?;
-        self.simple_search(input).await
+        let input = match input {
+            Value::String(s) => s,
+            Value::Object(map) => {
+                // Handle case where input is a JSON object with "input" field
+                if let Some(input_value) = map.get("input") {
+                    input_value.as_str()
+                        .ok_or("Input field should be a string")?
+                        .to_string()
+                } else {
+                    return Err("Missing 'input' field in request".into());
+                }
+            },
+            _ => return Err("Input should be a string or object with 'input' field".into())
+        };
+        
+        self.simple_search(&input).await
     }
 }
 
