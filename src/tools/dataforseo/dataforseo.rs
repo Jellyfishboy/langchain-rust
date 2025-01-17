@@ -92,10 +92,9 @@ fn process_dataforseo_response(res: &Value) -> Result<String, Box<dyn Error>> {
                         // Collect all organic results
                         let mut organic_results = Vec::new();
                         for item in items {
-                            if let (Some(title), Some(snippet)) = (
-                                item["title"].as_str(),
-                                item["snippet"].as_str()
-                            ) {
+                            // Only require title field, make snippet optional
+                            if let Some(title) = item["title"].as_str() {
+                                let snippet = item["snippet"].as_str().unwrap_or("");
                                 organic_results.push(format!("Title: {}\nSnippet: {}\n", title, snippet));
                             }
                         }
@@ -109,7 +108,7 @@ fn process_dataforseo_response(res: &Value) -> Result<String, Box<dyn Error>> {
         }
     }
     
-    Err("No results found in the response structure".into())
+    Err("No valid results found in the response structure".into())
 }
 
 #[async_trait]
