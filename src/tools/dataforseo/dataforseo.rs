@@ -157,7 +157,7 @@ impl Default for DataForSeo {
             access_token: std::env::var("DATAFORSEO_ACCESS_TOKEN").unwrap_or_default(),
             location: Some("United States".to_string()),
             language_code: Some("en".to_string()),
-            depth: Some(100),
+            depth: Some(30),
         }
     }
 }
