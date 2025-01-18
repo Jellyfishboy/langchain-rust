@@ -44,7 +44,7 @@ impl DataForSeo {
             "group_organic_results": true,
             "se_domain": "google.com",
             "keyword": query,
-            "depth": self.depth.unwrap_or(100)
+            "depth": self.depth.unwrap_or(20)
         }]);
     
         println!("🔍 Request body: {}", serde_json::to_string_pretty(&body)?);
@@ -96,7 +96,11 @@ fn process_dataforseo_response(res: &Value) -> Result<String, Box<dyn Error>> {
                             if let Some(title) = item["title"].as_str() {
                                 let snippet = item["snippet"].as_str().unwrap_or("");
                                 let link = item["link"].as_str().unwrap_or("");
-                                organic_results.push(format!("Title: {}\nSnippet: {}\n Link: {}", title, snippet, link));
+                                
+                                organic_results.push(format!("{{title: '{}', snippet: '{}', link: '{}'}}", 
+                                    title.replace("'", "\\'"), 
+                                    snippet.replace("'", "\\'"), 
+                                    link.replace("'", "\\'")));
                             }
                         }
                         
