@@ -92,19 +92,13 @@ fn process_dataforseo_response(res: &Value) -> Result<String, Box<dyn Error>> {
                         // Collect all organic results
                         let mut organic_results = Vec::new();
                         for item in items {
-                            // Only require title field, make snippet optional
-                            if let Some(title) = item["title"].as_str() {
-                                let snippet = item["snippet"].as_str()
-                                    .unwrap_or("")
-                                    .replace('\'', "\\'")
-                                    .replace('\n', " ");
-                                let link = item["link"].as_str()
-                                    .unwrap_or("")
-                                    .replace('\'', "\\'");
-                                let title = title.replace('\'', "\\'");
-                                
+                            if let (Some(title), Some(link)) = (
+                                item["title"].as_str(),
+                                item["url"].as_str()
+                            ) {
+                                let snippet = item["description"].as_str().unwrap_or(""); 
                                 organic_results.push(format!(
-                                    "{{title: '{}', snippet: '{}', link: '{}'}}",
+                                    "Title: {}\nSnippet: {}\nLink: {}\n",
                                     title, snippet, link
                                 ));
                             }
