@@ -79,44 +79,30 @@ fn process_dataforseo_response(res: &Value) -> Result<String, Box<dyn Error>> {
     if let Some(tasks) = res["tasks"].as_array() {
         println!("Found {} tasks", tasks.len());
         
-        if let Some(tasks) = res["tasks"].as_array() {
-            println!("Found {} tasks", tasks.len());
+        if let Some(first_task) = tasks.first() {
+            println!("Task status: {}", first_task["status_code"].as_u64().unwrap_or(0));
             
-            if let Some(first_task) = tasks.first() {
-                println!("Task status: {}", first_task["status_code"].as_u64().unwrap_or(0));
+            if let Some(results) = first_task["result"].as_array() {
+                println!("Found {} results", results.len());
                 
-                if let Some(results) = first_task["result"].as_array() {
-                    println!("Found {} results", results.len());
-                    
-                    if let Some(first_result) = results.first() {
-                        if let Some(items) = first_result["items"].as_array() {
-                            println!("Found {} items", items.len());
-                            
-                            // Collect all organic results
-                            let mut organic_results = Vec::new();
-                            for item in items {
-                                if let (Some(title), Some(link)) = (item["title"].as_str(), item["link"].as_str()) {
-                                    // Try different possible paths for snippet content
-                                    let snippet = item["snippet"].as_str()
-                                        .or_else(|| item["description"].as_str())
-                                        .unwrap_or("");
-                                    
-                                    // Format each result as a plain text entry
-                                    if !title.is_empty() {
-                                        organic_results.push(format!(
-                                            "Title: {}\nSnippet: {}\nLink: {}\n",
-                                            title,
-                                            snippet,
-                                            link
-                                        ));
-                                    }
-                                }
+                if let Some(first_result) = results.first() {
+                    if let Some(items) = first_result["items"].as_array() {
+                        println!("Found {} items", items.len());
+                        
+                        // Collect all organic results
+                        let mut organic_results = Vec::new();
+                        for item in items {
+                            // Only require title field, make snippet optional
+                            if let Some(title) = item["title"].as_str() {
+                                let snippet = item["snippet"].as_str().unwrap_or("");
+                                let link = item["link"].as_str().unwrap_or("");
+                                
+                                organic_results.push(format!("{{title: '{}', snippet: '{}', link: '{}'}}", title, snippet, link));
                             }
-                            
-                            if !organic_results.is_empty() {
-                                // Join all results with a separator
-                                return Ok(organic_results.join("\n---\n"));
-                            }
+                        }
+                        
+                        if !organic_results.is_empty() {
+                            return Ok(organic_results.join("\n"));
                         }
                     }
                 }
