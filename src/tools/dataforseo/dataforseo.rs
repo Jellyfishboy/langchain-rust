@@ -94,10 +94,19 @@ fn process_dataforseo_response(res: &Value) -> Result<String, Box<dyn Error>> {
                         for item in items {
                             // Only require title field, make snippet optional
                             if let Some(title) = item["title"].as_str() {
-                                let snippet = item["snippet"].as_str().unwrap_or("");
-                                let link = item["link"].as_str().unwrap_or("");
+                                let snippet = item["snippet"].as_str()
+                                    .unwrap_or("")
+                                    .replace('\'', "\\'")
+                                    .replace('\n', " ");
+                                let link = item["link"].as_str()
+                                    .unwrap_or("")
+                                    .replace('\'', "\\'");
+                                let title = title.replace('\'', "\\'");
                                 
-                                organic_results.push(format!("{{title: '{}', snippet: '{}', link: '{}'}}", title, snippet, link));
+                                organic_results.push(format!(
+                                    "{{title: '{}', snippet: '{}', link: '{}'}}",
+                                    title, snippet, link
+                                ));
                             }
                         }
                         
